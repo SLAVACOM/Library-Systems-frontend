@@ -4,11 +4,11 @@ import { Badge } from '@/components/ui/badge'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,20 +16,42 @@ import { ROLE_LABELS, UserService } from '@/services/user.service'
 import { IUserHistory } from '@/types/user-history.interface'
 import { IUser } from '@/types/user.interface'
 import {
-	Calendar,
-	Camera,
-	Clock,
-	History,
-	Loader2,
-	Mail,
-	Save,
-	Shield,
-	User as UserIcon
+    Calendar,
+    Camera,
+    Clock,
+    History,
+    Loader2,
+    Mail,
+    Save,
+    Shield,
+    User as UserIcon
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
+
+// Компонент для обложки книги с fallback
+function BookCover({ coverUrl, title }: { coverUrl?: string | null; title: string }) {
+	const [imageError, setImageError] = useState(false)
+	
+	if (imageError || !coverUrl || coverUrl === '/images/base-book.png') {
+		return (
+			<div className="h-12 w-9 rounded bg-gradient-to-br from-violet-100 to-purple-100 flex items-center justify-center border border-violet-200 shadow-sm">
+				<Camera className="h-4 w-4 text-violet-600" />
+			</div>
+		)
+	}
+
+	return (
+		<img
+			src={coverUrl}
+			alt={title}
+			className="h-12 w-9 rounded object-cover border border-gray-200 shadow-sm"
+			onError={() => setImageError(true)}
+		/>
+	)
+}
 
 function UserAvatar({ user, onImageError }: { user: IUser; onImageError: boolean }) {
 	if (
@@ -439,15 +461,23 @@ export default function ProfilePage() {
 									{reservations.slice(0, 2).map((reservation, index) => (
 										<Link key={index} href="/my-activity">
 											<div className="p-3 rounded-lg border bg-violet-50/50 border-violet-200 hover:bg-violet-100/50 transition-colors cursor-pointer">
-												<p className="text-sm font-medium truncate">
-													{reservation.bookTitle || 'Книга'}
-												</p>
-												{reservation.reservedUntil && (
-													<p className="text-xs text-violet-600 mt-1 flex items-center gap-1">
-														<Clock className="h-3 w-3" />
-														До: {new Date(reservation.reservedUntil).toLocaleDateString('ru-RU')}
-													</p>
-												)}
+												<div className="flex items-start gap-3">
+													<BookCover 
+														coverUrl={reservation.book?.coverUrl}
+														title={reservation.book?.title || reservation.bookTitle || 'Книга'}
+													/>
+													<div className="flex-1 min-w-0">
+														<p className="text-sm font-medium truncate">
+															{reservation.book?.title || reservation.bookTitle || 'Книга'}
+														</p>
+														{reservation.reservedUntil && (
+															<p className="text-xs text-violet-600 mt-1 flex items-center gap-1">
+																<Clock className="h-3 w-3" />
+																До: {new Date(reservation.reservedUntil).toLocaleDateString('ru-RU')}
+															</p>
+														)}
+													</div>
+												</div>
 											</div>
 										</Link>
 									))}

@@ -111,8 +111,45 @@ export const bookInstanceService = {
   },
 
   // Получить все экземпляры библиотеки с деталями (для библиотекаря)
-  async getLibraryInstancesWithDetails(libraryId: string): Promise<{ status: string; code: number; message: string; data: any[] }> {
-    const response = await axiosInstance.get(`${BOOK_INSTANCES_BASE_URL}?libraryId=${libraryId}`)
+  async getLibraryInstancesWithDetails(
+    libraryId: string,
+    params?: {
+      page?: number
+      size?: number
+      search?: string
+      status?: string
+      bookId?: string
+      sortBy?: string
+      sortDirection?: 'asc' | 'desc'
+    }
+  ): Promise<{
+    status: string
+    code: number
+    message: string
+    data: {
+      content: any[]
+      page: number
+      size: number
+      totalElements: number
+      totalPages: number
+      first: boolean
+      last: boolean
+      hasNext: boolean
+      hasPrevious: boolean
+    }
+  }> {
+    const queryParams = new URLSearchParams()
+    queryParams.append('libraryId', libraryId)
+    
+    if (params?.page !== undefined) queryParams.append('page', params.page.toString())
+    if (params?.size !== undefined) queryParams.append('size', params.size.toString())
+    if (params?.search) queryParams.append('search', params.search)
+    if (params?.status) queryParams.append('status', params.status)
+    if (params?.bookId) queryParams.append('bookId', params.bookId)
+    if (params?.sortBy) queryParams.append('sortBy', params.sortBy)
+    if (params?.sortDirection) queryParams.append('sortDirection', params.sortDirection)
+    
+    const response = await axiosInstance.get(`${BOOK_INSTANCES_BASE_URL}?${queryParams.toString()}`)
     return response.data
   },
 }

@@ -371,6 +371,72 @@ export default function UsersPage() {
 					</div>
 				</CardContent>
 			</Card>
+
+			{/* Пагинация */}
+			{totalPages > 1 && (
+				<Card>
+					<CardContent className="pt-6">
+						<div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+							<div className="text-sm text-muted-foreground">
+								Показано {users.length} из {totalElements} пользователей
+							</div>
+							<div className="flex items-center gap-2">
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => handlePageChange(0)}
+									disabled={page === 0}
+								>
+									Первая
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => handlePageChange(page - 1)}
+									disabled={page === 0}
+								>
+									← Пред.
+								</Button>
+								<div className="px-4 py-2 border rounded-md bg-muted text-sm font-medium">
+									{page + 1} / {totalPages}
+								</div>
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => handlePageChange(page + 1)}
+									disabled={page >= totalPages - 1}
+								>
+									След. →
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => handlePageChange(totalPages - 1)}
+									disabled={page >= totalPages - 1}
+								>
+									Последняя
+								</Button>
+							</div>
+							<div className="flex items-center gap-2">
+								<span className="text-sm text-muted-foreground">На странице:</span>
+								<select
+									value={size}
+									onChange={(e) => {
+										setSize(Number(e.target.value))
+										setPage(0)
+									}}
+									className="px-3 py-1 border rounded-md text-sm"
+								>
+									<option value="10">10</option>
+									<option value="20">20</option>
+									<option value="50">50</option>
+									<option value="100">100</option>
+								</select>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
+			)}
 		</div>
 	)
 }

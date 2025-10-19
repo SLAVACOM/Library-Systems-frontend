@@ -3,58 +3,79 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle
 } from '@/components/ui/card'
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
 } from '@/components/ui/select'
 import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { bookInstanceService } from '@/services/book-instance.service'
 import { LibraryService } from '@/services/library.service'
-import { UserService } from '@/services/user.service'
 import { IReservation } from '@/types/reservation.interface'
 import {
-	AlertCircle,
-	BookOpen,
-	Calendar,
-	CheckCircle,
-	Clock,
-	Loader2,
-	Package,
-	RefreshCw,
-	Search,
-	User,
-	XCircle
+    AlertCircle,
+    BookOpen,
+    Calendar,
+    CheckCircle,
+    Clock,
+    Loader2,
+    Package,
+    RefreshCw,
+    Search,
+    User,
+    XCircle
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+
+// Компонент для обложки книги с fallback
+function BookCover({ coverUrl, title }: { coverUrl?: string | null; title: string }) {
+	const [imageError, setImageError] = useState(false)
+	
+	if (imageError || !coverUrl || coverUrl === '/images/base-book.png') {
+		return (
+			<div className="h-12 w-8 rounded bg-gradient-to-br from-violet-100 to-purple-100 flex items-center justify-center border border-violet-200 shadow-sm">
+				<BookOpen className="h-4 w-4 text-violet-600" />
+			</div>
+		)
+	}
+
+	return (
+		<img
+			src={coverUrl}
+			alt={title}
+			className="h-12 w-8 rounded object-cover border border-gray-200 shadow-sm"
+			onError={() => setImageError(true)}
+		/>
+	)
+}
 
 type BookInstanceStatus = 'AVAILABLE' | 'RESERVED' | 'BORROWED' | 'LOST' | 'DAMAGED'
 
@@ -111,6 +132,7 @@ export default function LibrarianPanelPage() {
 	const [instances, setInstances] = useState<IBookInstanceExtended[]>([])
 	const [libraries, setLibraries] = useState<any[]>([])
 	const [loading, setLoading] = useState(true)
+	const [reservationsLoading, setReservationsLoading] = useState(false)
 	const [selectedLibrary, setSelectedLibrary] = useState<string>('')
 	const [statusFilter, setStatusFilter] = useState<BookInstanceStatus | 'ALL'>('ALL')
 	const [searchQuery, setSearchQuery] = useState('')
@@ -120,6 +142,12 @@ export default function LibrarianPanelPage() {
 	const [extendReservationDialogOpen, setExtendReservationDialogOpen] = useState(false)
 	const [newReservedUntil, setNewReservedUntil] = useState('')
 	const [processing, setProcessing] = useState(false)
+	
+	// Пагинация
+	const [page, setPage] = useState(0)
+	const [size, setSize] = useState(20)
+	const [totalPages, setTotalPages] = useState(0)
+	const [totalElements, setTotalElements] = useState(0)
 
 	useEffect(() => {
 		loadData()
@@ -128,8 +156,9 @@ export default function LibrarianPanelPage() {
 	useEffect(() => {
 		if (selectedLibrary) {
 			loadInstancesForLibrary(selectedLibrary)
+			loadReservations() // Загружаем резервирования при смене библиотеки
 		}
-	}, [selectedLibrary, statusFilter])
+	}, [selectedLibrary, statusFilter, page, size, searchQuery])
 
 	const loadData = async () => {
 		try {
@@ -141,12 +170,10 @@ export default function LibrarianPanelPage() {
 			setLibraries(librariesData)
 			
 			// Если есть библиотеки, выбираем первую
+			// useEffect автоматически загрузит экземпляры и резервирования
 			if (librariesData.length > 0) {
 				setSelectedLibrary(librariesData[0].uuid)
 			}
-			
-			// Загружаем резервирования
-			await loadReservations()
 		} catch (error: any) {
 			console.error('❌ Ошибка загрузки данных:', error)
 			alert('Ошибка загрузки данных')
@@ -157,39 +184,93 @@ export default function LibrarianPanelPage() {
 
 	const loadReservations = async () => {
 		try {
-			// TODO: Добавить endpoint для получения всех резервирований библиотекаря
-			// Пока используем резервирования текущего пользователя
-			const data = await UserService.getMyReservations()
-			setReservations(data)
+			setReservationsLoading(true)
+			
+			if (!selectedLibrary) {
+				setReservations([])
+				return
+			}
+			
+			// Загружаем все экземпляры выбранной библиотеки со статусом RESERVED
+			const response = await bookInstanceService.getLibraryInstancesWithDetails(selectedLibrary, {
+				page: 0,
+				size: 1000, // Загружаем все резервирования
+				status: 'RESERVED',
+				sortBy: 'reservedUntil',
+				sortDirection: 'asc'
+			})
+			
+			if (response.data && response.data.content) {
+				// Преобразуем экземпляры в формат резервирований
+				const reservationsData = response.data.content
+					.filter((instance: any) => instance.status === 'RESERVED' && instance.reservedBy)
+					.map((instance: any) => ({
+						id: instance.id,
+						book: {
+							id: instance.book?.id || '',
+							title: instance.book?.title || 'Неизвестная книга',
+							coverUrl: instance.book?.coverUrl || '',
+							language: instance.book?.language || 'N/A',
+							publicationYear: instance.book?.publicationYear || 0
+						},
+						library: {
+							id: instance.library?.id || '',
+							name: instance.library?.name || 'Неизвестная библиотека',
+							address: instance.library?.address || '',
+							city: instance.library?.city || '',
+							latitude: instance.library?.latitude || 0,
+							longitude: instance.library?.longitude || 0
+						},
+						status: instance.status,
+						reservedBy: instance.reservedBy,
+						reservedUntil: instance.reservedUntil,
+						sector: instance.sector,
+						shelf: instance.shelf,
+						position: instance.position,
+						createdAt: instance.createdAt || new Date().toISOString(),
+						updatedAt: instance.updatedAt || new Date().toISOString()
+					}))
+				setReservations(reservationsData)
+			} else {
+				setReservations([])
+			}
 		} catch (error: any) {
 			console.error('❌ Ошибка загрузки резервирований:', error)
 			setReservations([])
+		} finally {
+			setReservationsLoading(false)
 		}
 	}
 
 	const loadInstancesForLibrary = async (libraryId: string) => {
 		try {
 			setLoading(true)
-			const response = await bookInstanceService.getLibraryInstancesWithDetails(libraryId)
+			const response = await bookInstanceService.getLibraryInstancesWithDetails(libraryId, {
+				page,
+				size,
+				search: searchQuery || undefined,
+				status: statusFilter !== 'ALL' ? statusFilter : undefined,
+				sortBy: 'createdAt',
+				sortDirection: 'desc'
+			})
 			console.log('📥 Ответ сервера:', response)
 			
-			// API возвращает данные в формате пагинации: data.content
-			let content: any[] = []
-			if (response.data) {
-				// Проверяем, есть ли у data поле content (пагинированный ответ)
-				if (typeof response.data === 'object' && 'content' in response.data) {
-					const dataContent = (response.data as any).content
-					content = Array.isArray(dataContent) ? dataContent : []
-				} else if (Array.isArray(response.data)) {
-					content = response.data
-				}
+			if (response.data && response.data.content) {
+				setInstances(response.data.content)
+				setTotalPages(response.data.totalPages)
+				setTotalElements(response.data.totalElements)
+			} else {
+				// Backward compatibility
+				const content = Array.isArray(response.data) ? response.data : []
+				setInstances(content)
+				setTotalPages(1)
+				setTotalElements(content.length)
 			}
-			console.log('📚 Экземпляры:', content)
-			
-			setInstances(content)
 		} catch (error: any) {
 			console.error('❌ Ошибка загрузки экземпляров:', error)
 			setInstances([])
+			setTotalPages(0)
+			setTotalElements(0)
 		} finally {
 			setLoading(false)
 		}
@@ -284,13 +365,16 @@ export default function LibrarianPanelPage() {
 		setExtendReservationDialogOpen(true)
 	}
 
-	const filteredInstances = Array.isArray(instances) ? instances.filter(instance => {
-		const matchesStatus = statusFilter === 'ALL' || instance.status === statusFilter
-		const matchesSearch = !searchQuery || 
-			instance.book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			instance.reservedBy?.username.toLowerCase().includes(searchQuery.toLowerCase())
-		return matchesStatus && matchesSearch
-	}) : []
+	// Убираем клиентскую фильтрацию, так как фильтрация теперь на сервере
+	const filteredInstances = Array.isArray(instances) ? instances : []
+	
+	const handleSearch = () => {
+		setPage(0)
+	}
+	
+	const handlePageChange = (newPage: number) => {
+		setPage(newPage)
+	}
 
 	if (loading && libraries.length === 0) {
 		return (
@@ -387,16 +471,25 @@ export default function LibrarianPanelPage() {
 
 								<div className="space-y-2">
 									<Label>Поиск</Label>
-									<div className="relative">
-										<Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-										<Input
-											placeholder="Название книги или пользователь..."
-											value={searchQuery}
-											onChange={(e) => setSearchQuery(e.target.value)}
-											className="pl-8"
-										/>
+									<div className="flex gap-2">
+										<div className="relative flex-1">
+											<Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+											<Input
+												placeholder="Название книги или пользователь..."
+												value={searchQuery}
+												onChange={(e) => setSearchQuery(e.target.value)}
+												onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+												className="pl-8"
+											/>
+										</div>
+										<Button onClick={handleSearch}>Найти</Button>
 									</div>
 								</div>
+							</div>
+							
+							{/* Информация о пагинации */}
+							<div className="text-sm text-muted-foreground">
+								Всего экземпляров: {totalElements} | Страница {page + 1} из {totalPages || 1}
 							</div>
 
 							{/* Таблица экземпляров */}
@@ -436,13 +529,10 @@ export default function LibrarianPanelPage() {
 													<TableRow key={instance.id}>
 														<TableCell>
 															<div className="flex items-center gap-3">
-																{instance.book.coverUrl && (
-																	<img 
-																		src={instance.book.coverUrl} 
-																		alt={instance.book.title}
-																		className="h-12 w-8 object-cover rounded"
-																	/>
-																)}
+																<BookCover 
+																	coverUrl={instance.book.coverUrl}
+																	title={instance.book.title}
+																/>
 																<div>
 																	<Link href={`/books/${instance.book.id}`}>
 																		<p className="font-medium hover:text-violet-600 transition-colors">
@@ -534,6 +624,68 @@ export default function LibrarianPanelPage() {
 									</Table>
 								</div>
 							)}
+							
+							{/* Пагинация */}
+							{totalPages > 1 && (
+								<div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
+									<div className="text-sm text-muted-foreground">
+										Показано {filteredInstances.length} из {totalElements} экземпляров
+									</div>
+									<div className="flex items-center gap-2">
+										<Button
+											variant="outline"
+											size="sm"
+											onClick={() => handlePageChange(0)}
+											disabled={page === 0}
+										>
+											Первая
+										</Button>
+										<Button
+											variant="outline"
+											size="sm"
+											onClick={() => handlePageChange(page - 1)}
+											disabled={page === 0}
+										>
+											← Пред.
+										</Button>
+										<div className="px-4 py-2 border rounded-md bg-muted text-sm font-medium">
+											{page + 1} / {totalPages}
+										</div>
+										<Button
+											variant="outline"
+											size="sm"
+											onClick={() => handlePageChange(page + 1)}
+											disabled={page >= totalPages - 1}
+										>
+											След. →
+										</Button>
+										<Button
+											variant="outline"
+											size="sm"
+											onClick={() => handlePageChange(totalPages - 1)}
+											disabled={page >= totalPages - 1}
+										>
+											Последняя
+										</Button>
+									</div>
+									<div className="flex items-center gap-2">
+										<span className="text-sm text-muted-foreground">На странице:</span>
+										<select
+											value={size}
+											onChange={(e) => {
+												setSize(Number(e.target.value))
+												setPage(0)
+											}}
+											className="px-3 py-1 border rounded-md text-sm"
+										>
+											<option value="10">10</option>
+											<option value="20">20</option>
+											<option value="50">50</option>
+											<option value="100">100</option>
+										</select>
+									</div>
+								</div>
+							)}
 						</CardContent>
 					</Card>
 				</TabsContent>
@@ -544,24 +696,42 @@ export default function LibrarianPanelPage() {
 						<CardHeader>
 							<CardTitle>Активные резервирования</CardTitle>
 							<CardDescription>
-								Список всех активных резервирований
+								{selectedLibrary && libraries.find(l => l.uuid === selectedLibrary) && (
+									<>
+										{libraries.find(l => l.uuid === selectedLibrary)?.name}: {' '}
+										{reservationsLoading ? 'Загрузка...' : `${reservations.length} активных резервирований`}
+									</>
+								)}
+								{!selectedLibrary && 'Выберите библиотеку'}
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
-							{reservations.length === 0 ? (
+							{reservationsLoading ? (
+								<div className="flex items-center justify-center py-12">
+									<Loader2 className="h-8 w-8 animate-spin text-violet-600" />
+								</div>
+							) : reservations.length === 0 ? (
 								<div className="text-center py-12">
 									<Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-									<p className="text-muted-foreground">Нет активных резервирований</p>
+									<p className="text-muted-foreground">
+										{selectedLibrary 
+											? 'Нет активных резервирований в выбранной библиотеке' 
+											: 'Выберите библиотеку для просмотра резервирований'}
+									</p>
 								</div>
 							) : (
 								<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 									{reservations.map((reservation) => (
 										<Card key={reservation.id} className="border-2 hover:shadow-lg transition-all">
 											<CardHeader className="pb-3">
-												<div className="flex items-start justify-between">
-													<div className="flex-1">
+												<div className="flex items-start gap-3">
+													<BookCover 
+														coverUrl={reservation.book.coverUrl}
+														title={reservation.book.title}
+													/>
+													<div className="flex-1 min-w-0">
 														<Link href={`/books/${reservation.book.id}`}>
-															<CardTitle className="text-base hover:text-violet-600 transition-colors cursor-pointer">
+															<CardTitle className="text-base hover:text-violet-600 transition-colors cursor-pointer line-clamp-2">
 																{reservation.book.title}
 															</CardTitle>
 														</Link>

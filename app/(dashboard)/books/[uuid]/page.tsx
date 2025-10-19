@@ -4,11 +4,11 @@ import { ReviewModal } from '@/components/review-modal'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle
 } from '@/components/ui/card'
 import { bookInstanceService } from '@/services/book-instance.service'
 import { BookService } from '@/services/book.service'

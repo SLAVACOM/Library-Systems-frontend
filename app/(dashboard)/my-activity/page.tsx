@@ -4,11 +4,11 @@ import { Badge } from '@/components/ui/badge'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle
 } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { bookInstanceService } from '@/services/book-instance.service'
@@ -16,25 +16,53 @@ import { UserService } from '@/services/user.service'
 import { IReservation } from '@/types/reservation.interface'
 import { ACTION_COLORS, ACTION_LABELS, ActionType, IUserHistory } from '@/types/user-history.interface'
 import {
-	BookOpen,
-	Calendar,
-	CheckCircle,
-	ChevronDown,
-	ChevronLeft,
-	ChevronRight,
-	ChevronUp,
-	Clock,
-	History,
-	Loader2,
-	MapPin,
-	PackageCheck,
-	X,
-	XCircle
+    BookOpen,
+    Calendar,
+    CheckCircle,
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    ChevronUp,
+    Clock,
+    History,
+    Loader2,
+    MapPin,
+    PackageCheck,
+    X,
+    XCircle
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
+
+// Компонент для обложки книги с fallback
+function BookCover({ coverUrl, title, size = 'sm' }: { coverUrl?: string | null; title: string; size?: 'sm' | 'md' }) {
+	const [imageError, setImageError] = useState(false)
+	
+	const sizeClasses = size === 'sm' 
+		? 'h-16 w-12' 
+		: 'h-40 w-28'
+	
+	const iconSize = size === 'sm' ? 'h-6 w-6' : 'h-10 w-10'
+	
+	if (imageError || !coverUrl || coverUrl === '/images/base-book.png') {
+		return (
+			<div className={`${sizeClasses} rounded-lg bg-gradient-to-br from-violet-100 to-purple-100 flex items-center justify-center border-2 border-violet-200 shadow-lg`}>
+				<BookOpen className={`${iconSize} text-violet-600`} />
+			</div>
+		)
+	}
+
+	return (
+		<img
+			src={coverUrl}
+			alt={title}
+			className={`${sizeClasses} rounded-lg object-cover border-2 border-gray-200 shadow-lg`}
+			onError={() => setImageError(true)}
+		/>
+	)
+}
 
 export default function MyActivityPage() {
 	const { data: session } = useSession()
@@ -356,22 +384,17 @@ export default function MyActivityPage() {
 
 									<CardContent className="relative space-y-3">
 										{/* Обложка книги */}
-										{reservation.book.coverUrl && (
-											<div className="flex items-center gap-3 pb-3 border-b">
-												<img 
-													src={reservation.book.coverUrl} 
-													alt={reservation.book.title}
-													className="h-16 w-12 object-cover rounded shadow-sm"
-													onError={(e) => {
-														e.currentTarget.style.display = 'none'
-													}}
-												/>
-												<div className="flex-1 text-xs text-muted-foreground">
-													<p>{reservation.book.publicationYear} г.</p>
-													<p>{reservation.book.language}</p>
-												</div>
+										<div className="flex items-center gap-3 pb-3 border-b">
+											<BookCover 
+												coverUrl={reservation.book.coverUrl}
+												title={reservation.book.title}
+												size="sm"
+											/>
+											<div className="flex-1 text-xs text-muted-foreground">
+												<p>{reservation.book.publicationYear} г.</p>
+												<p>{reservation.book.language}</p>
 											</div>
-										)}
+										</div>
 
 										<div className="flex items-center justify-between text-sm">
 											<span className="text-muted-foreground">Статус:</span>
@@ -523,19 +546,16 @@ export default function MyActivityPage() {
 
 												<div className="flex items-start gap-6">
 													{/* Обложка книги */}
-													{bookInstance.book.coverUrl && (
-														<div className="relative group/cover">
-															<img 
-																src={bookInstance.book.coverUrl} 
-																alt={bookInstance.book.title}
-																className="h-40 w-28 object-cover rounded-lg shadow-lg flex-shrink-0 transition-transform duration-300 group-hover/cover:scale-105"
-																onError={(e) => {
-																	e.currentTarget.style.display = 'none'
-																}}
+													<div className="relative group/cover flex-shrink-0">
+														<div className="transition-transform duration-300 group-hover/cover:scale-105">
+															<BookCover 
+																coverUrl={bookInstance.book.coverUrl}
+																title={bookInstance.book.title}
+																size="md"
 															/>
-															<div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-lg opacity-0 group-hover/cover:opacity-100 transition-opacity duration-300" />
 														</div>
-													)}
+														<div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-lg opacity-0 group-hover/cover:opacity-100 transition-opacity duration-300" />
+													</div>
 													
 													<div className="flex-1 min-w-0">
 														{/* Заголовок книги */}

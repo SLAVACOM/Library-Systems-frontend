@@ -35,7 +35,7 @@ export default function LibrariesPage() {
   
   // Пагинация
   const [page, setPage] = useState(0)
-  const [size, setSize] = useState(2)
+  const [size, setSize] = useState(20)
   const [totalPages, setTotalPages] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
   
