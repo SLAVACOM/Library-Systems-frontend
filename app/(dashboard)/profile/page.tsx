@@ -97,6 +97,14 @@ export default function ProfilePage() {
 		photoUrl: '',
 		role: '',
 	})
+	
+	const [errors, setErrors] = useState({
+		username: '',
+		email: '',
+		firstName: '',
+		lastName: '',
+		photoUrl: '',
+	})
 
 	useEffect(() => {
 		// Загружаем данные только один раз
@@ -161,18 +169,72 @@ export default function ProfilePage() {
 		}
 	}
 
+	const validateForm = (): boolean => {
+		const newErrors = {
+			username: '',
+			email: '',
+			firstName: '',
+			lastName: '',
+			photoUrl: '',
+		}
+		
+		let isValid = true
+		
+		// Валидация username (3-50 символов)
+		if (formData.username) {
+			if (formData.username.length < 3) {
+				newErrors.username = 'Имя пользователя должно содержать минимум 3 символа'
+				isValid = false
+			} else if (formData.username.length > 50) {
+				newErrors.username = 'Имя пользователя не может превышать 50 символов'
+				isValid = false
+			}
+		}
+		
+		// Валидация email
+		if (formData.email) {
+			const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+			if (!emailRegex.test(formData.email)) {
+				newErrors.email = 'Введите корректный email адрес'
+				isValid = false
+			}
+		}
+		
+		// firstName и lastName - опциональные, без ограничений длины
+		// photoUrl - опциональное, без валидации
+		
+		setErrors(newErrors)
+		return isValid
+	}
+
 	const handleSave = async () => {
 		if (!session?.user) return
+		
+		// Валидация формы
+		if (!validateForm()) {
+			alert('❌ Пожалуйста, исправьте ошибки в форме')
+			return
+		}
 
 		setSaving(true)
 		try {
-			const updateData = {
-				username: formData.username || undefined,
-				email: formData.email || undefined,
-				firstName: formData.firstName || undefined,
-				lastName: formData.lastName || undefined,
-				photoUrl: formData.photoUrl || undefined,
-				role: formData.role || undefined,
+			// Отправляем только заполненные поля
+			const updateData: any = {}
+			
+			if (formData.username && formData.username.trim()) {
+				updateData.username = formData.username.trim()
+			}
+			if (formData.email && formData.email.trim()) {
+				updateData.email = formData.email.trim()
+			}
+			if (formData.firstName && formData.firstName.trim()) {
+				updateData.firstName = formData.firstName.trim()
+			}
+			if (formData.lastName && formData.lastName.trim()) {
+				updateData.lastName = formData.lastName.trim()
+			}
+			if (formData.photoUrl && formData.photoUrl.trim()) {
+				updateData.photoUrl = formData.photoUrl.trim()
 			}
 
 			const updatedUser = await UserService.updateMe(updateData)
@@ -187,7 +249,21 @@ export default function ProfilePage() {
 			alert('✅ Профиль успешно обновлен!')
 		} catch (error: any) {
 			console.error('❌ Ошибка обновления профиля:', error)
-			alert(error.response?.data?.message || 'Не удалось обновить профиль')
+			
+			// Обработка ошибок валидации от сервера
+			if (error.response?.status === 400) {
+				const errorMessage = error.response?.data?.message || ''
+				
+				if (errorMessage.includes('username') || errorMessage.includes('Username')) {
+					setErrors(prev => ({ ...prev, username: errorMessage }))
+				} else if (errorMessage.includes('email') || errorMessage.includes('Email')) {
+					setErrors(prev => ({ ...prev, email: errorMessage }))
+				}
+				
+				alert(`❌ Ошибка валидации: ${errorMessage}`)
+			} else {
+				alert(error.response?.data?.message || 'Не удалось обновить профиль')
+			}
 		} finally {
 			setSaving(false)
 		}
@@ -273,7 +349,7 @@ export default function ProfilePage() {
 					<CardHeader>
 						<CardTitle>Личные данные</CardTitle>
 						<CardDescription>
-							Обновите свою персональную информацию
+							Обновите свою персональную информацию. Поля отмеченные <span className="text-red-500">*</span> обязательны для заполнения.
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-6">
@@ -288,22 +364,30 @@ export default function ProfilePage() {
 									<Input
 										id="firstName"
 										value={formData.firstName}
-										onChange={(e) =>
+										onChange={(e) => {
 											setFormData({ ...formData, firstName: e.target.value })
-										}
-										placeholder="Введите имя"
+											setErrors({ ...errors, firstName: '' })
+										}}
+										placeholder="Введите имя (необязательно)"
 									/>
+									{errors.firstName && (
+										<p className="text-xs text-red-600 mt-1">{errors.firstName}</p>
+									)}
 								</div>
 								<div>
 									<Label htmlFor="lastName">Фамилия</Label>
 									<Input
 										id="lastName"
 										value={formData.lastName}
-										onChange={(e) =>
+										onChange={(e) => {
 											setFormData({ ...formData, lastName: e.target.value })
-										}
-										placeholder="Введите фамилию"
+											setErrors({ ...errors, lastName: '' })
+										}}
+										placeholder="Введите фамилию (необязательно)"
 									/>
+									{errors.lastName && (
+										<p className="text-xs text-red-600 mt-1">{errors.lastName}</p>
+									)}
 								</div>
 							</div>
 						</div>
@@ -315,27 +399,47 @@ export default function ProfilePage() {
 							</h3>
 							<div className="space-y-4">
 								<div>
-									<Label htmlFor="username">Имя пользователя</Label>
+									<Label htmlFor="username">
+										Имя пользователя <span className="text-red-500">*</span>
+									</Label>
 									<Input
 										id="username"
 										value={formData.username}
-										onChange={(e) =>
+										onChange={(e) => {
 											setFormData({ ...formData, username: e.target.value })
-										}
-										placeholder="username"
+											setErrors({ ...errors, username: '' })
+										}}
+										placeholder="username (3-50 символов)"
+										className={errors.username ? 'border-red-500' : ''}
 									/>
+									{errors.username && (
+										<p className="text-xs text-red-600 mt-1">{errors.username}</p>
+									)}
+									<p className="text-xs text-muted-foreground mt-1">
+										От 3 до 50 символов
+									</p>
 								</div>
 								<div>
-									<Label htmlFor="email">Email</Label>
+									<Label htmlFor="email">
+										Email <span className="text-red-500">*</span>
+									</Label>
 									<Input
 										id="email"
 										type="email"
 										value={formData.email}
-										onChange={(e) =>
+										onChange={(e) => {
 											setFormData({ ...formData, email: e.target.value })
-										}
+											setErrors({ ...errors, email: '' })
+										}}
 										placeholder="email@example.com"
+										className={errors.email ? 'border-red-500' : ''}
 									/>
+									{errors.email && (
+										<p className="text-xs text-red-600 mt-1">{errors.email}</p>
+									)}
+									<p className="text-xs text-muted-foreground mt-1">
+										Корректный email адрес
+									</p>
 								</div>
 							</div>
 						</div>
@@ -350,11 +454,16 @@ export default function ProfilePage() {
 								<Input
 									id="photoUrl"
 									value={formData.photoUrl}
-									onChange={(e) =>
+									onChange={(e) => {
 										setFormData({ ...formData, photoUrl: e.target.value })
-									}
-									placeholder="https://example.com/photo.jpg"
+										setErrors({ ...errors, photoUrl: '' })
+									}}
+									placeholder="https://example.com/photo.jpg (необязательно)"
+									className={errors.photoUrl ? 'border-red-500' : ''}
 								/>
+								{errors.photoUrl && (
+									<p className="text-xs text-red-600 mt-1">{errors.photoUrl}</p>
+								)}
 								<p className="text-xs text-muted-foreground mt-1">
 									Вставьте ссылку на изображение
 								</p>
