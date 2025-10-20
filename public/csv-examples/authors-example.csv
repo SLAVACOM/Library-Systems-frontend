@@ -1,0 +1,5 @@
+firstName,lastName,biography,birthDate,deathDate,nationality,pseudonymous,photoUrl
+John,Tolkien,"English writer and philologist known for The Lord of the Rings",1892-01-03,1973-09-02,British,false,https://example.com/tolkien.jpg
+George,Martin,"American novelist and screenwriter known for A Song of Ice and Fire",1948-09-20,,American,false,https://example.com/martin.jpg
+Joanne,Rowling,"British author best known for the Harry Potter series",1965-07-31,,British,false,https://example.com/rowling.jpg
+Jane,Austen,"English novelist known for Pride and Prejudice",1775-12-16,1817-07-18,British,false,https://example.com/austen.jpg

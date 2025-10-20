@@ -1,0 +1,5 @@
+title,description,language,publicationYear,pages,coverUrl,authorIds,genreIds
+The Hobbit,"A fantasy novel about Bilbo Baggins' adventure",English,1937,310,https://example.com/hobbit.jpg,author-uuid-1,genre-uuid-1;genre-uuid-2
+A Game of Thrones,"First book in A Song of Ice and Fire series",English,1996,694,https://example.com/got.jpg,author-uuid-2,genre-uuid-1;genre-uuid-3
+Harry Potter and the Philosopher's Stone,"First book in Harry Potter series",English,1997,223,https://example.com/hp1.jpg,author-uuid-3,genre-uuid-1;genre-uuid-4
+Pride and Prejudice,"Classic romance novel",English,1813,432,https://example.com/pride.jpg,author-uuid-4,genre-uuid-4;genre-uuid-5

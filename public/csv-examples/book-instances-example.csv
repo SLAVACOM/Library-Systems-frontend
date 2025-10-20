@@ -1,0 +1,6 @@
+bookId,libraryId,status,sector,shelf,position
+book-uuid-1,library-uuid-1,AVAILABLE,A,5,12
+book-uuid-1,library-uuid-1,AVAILABLE,A,5,13
+book-uuid-2,library-uuid-2,BORROWED,B,3,8
+book-uuid-3,library-uuid-1,RESERVED,C,1,5
+book-uuid-4,library-uuid-3,AVAILABLE,A,2,15

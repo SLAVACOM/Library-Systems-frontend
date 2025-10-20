@@ -12,6 +12,15 @@ export interface CreateUserDto {
 	photoUrl?: string
 }
 
+export interface RegisterUserDto {
+	username: string
+	email: string
+	password: string
+	firstName?: string
+	lastName?: string
+	photoUrl?: string
+}
+
 export interface UpdateUserDto {
 	username?: string
 	email?: string
@@ -118,7 +127,23 @@ export class UserService {
 	}
 
 	/**
-	 * Создать пользователя
+	 * Регистрация нового пользователя (публичный endpoint)
+	 */
+	static async register(data: RegisterUserDto): Promise<IUser> {
+		try {
+			const response = await axiosInstance.post<IUserResponse>(
+				'/api/v1/auth/register',
+				data
+			)
+			return response.data.data
+		} catch (error) {
+			console.error('Error registering user:', error)
+			throw error
+		}
+	}
+
+	/**
+	 * Создать пользователя (только для админа)
 	 */
 	static async createUser(data: CreateUserDto): Promise<IUser> {
 		try {

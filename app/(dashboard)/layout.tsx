@@ -1,21 +1,21 @@
 'use client';
-import { BookOpen, Briefcase, History, Home, Library, LogOut, Package, PanelLeft, Tag, User, UserCog, Users } from 'lucide-react'
-import Link from 'next/link'
-import { useState } from 'react'
+import { BookOpen, Briefcase, FileUp, History, Home, Library, LogOut, Package, PanelLeft, Tag, User, UserCog, Users } from 'lucide-react';
+import Link from 'next/link';
+import { useState } from 'react';
 
-import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
-} from '@/components/ui/tooltip'
-import { Roles } from '@/types/user.interface'
-import { Analytics } from '@vercel/analytics/react'
-import { signOut, useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { NavItem } from './nav-item'
-import Providers from './providers'
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger
+} from '@/components/ui/tooltip';
+import { Roles } from '@/types/user.interface';
+import { Analytics } from '@vercel/analytics/react';
+import { signOut, useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { NavItem } from './nav-item';
+import Providers from './providers';
 
 export default function DashboardLayout({
   children
@@ -95,6 +95,13 @@ function DesktopNav({ onLogout }: { onLogout: () => void }) {
         {(isAdmin || isLibrarian) && (
           <NavItem href="/librarian-panel" label="Панель библиотекаря">
             <Briefcase className="h-5 w-5" />
+          </NavItem>
+        )}
+
+        {/* CSV Import - Только для ADMIN и LIBRARIAN */}
+        {(isAdmin || isLibrarian) && (
+          <NavItem href="/csv-import" label="Импорт CSV">
+            <FileUp className="h-5 w-5" />
           </NavItem>
         )}
       </nav>
@@ -218,6 +225,18 @@ function MobileNav({ onLogout }: { onLogout: () => void }) {
             >
               <Briefcase className="h-5 w-5" />
               Панель библиотекаря
+            </Link>
+          )}
+
+          {/* CSV Import - Только для ADMIN и LIBRARIAN */}
+          {(isAdmin || isLibrarian) && (
+            <Link
+              href="/csv-import"
+              className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+              onClick={handleClose}
+            >
+              <FileUp className="h-5 w-5" />
+              Импорт CSV
             </Link>
           )}
 
